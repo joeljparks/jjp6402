@@ -1,0 +1,52 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    GO_VERSION: "1.26.5"
+    TRIVY_VERSION: "v0.72.0"
+    NOTATION_VERSION: "1.3.0"
+    ECR_REPOSITORY: "jjp6402-tasky-app"
+    SIGNING_PROFILE_NAME: "jjp6402_container"
+
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - ./codebuild/scripts/install-common.sh
+      - ./codebuild/scripts/install-go.sh "$GO_VERSION"
+      - ./codebuild/scripts/install-trivy.sh "$TRIVY_VERSION"
+      - ./codebuild/scripts/install-notation.sh "$NOTATION_VERSION"
+      - ./codebuild/scripts/install-aws-signer-notation-plugin.sh
+      - go version
+      - trivy --version
+      - notation version
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - cd app/tasky
+      - test -f wizexercise.txt
+      - grep -q "COPY wizexercise.txt /wizexercise.txt" Dockerfile
+      - export IMAGE_TAG="1.1.${CODEBUILD_BUILD_NUMBER}"
+      - export IMAGE_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
+      - export IMAGE_URI="${IMAGE_REPO}:${IMAGE_TAG}"
+      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  build:
+    commands:
+      - docker build -t "$IMAGE_URI" .
+      - trivy image --exit-code 0 --severity UNKNOWN,LOW,MEDIUM "$IMAGE_URI"
+      - trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE_URI"
+      - docker push "$IMAGE_URI"
+      - export IMAGE_DIGEST=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$IMAGE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+      - export IMAGE_REF="${IMAGE_REPO}@${IMAGE_DIGEST}"
+      - notation sign --plugin com.amazonaws.signer.notation.plugin --id "$SIGNING_PROFILE_NAME" "$IMAGE_REF"
+      - notation verify "$IMAGE_REF"
+  post_build:
+    commands:
+      - printf 'IMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=%s\nIMAGE_REF=%s\n' "$IMAGE_TAG" "$IMAGE_URI" "$IMAGE_DIGEST" "$IMAGE_REF" > image.env
+      - cat image.env
+
+artifacts:
+  files:
+    - app/tasky/image.env
+  discard-paths: yes

@@ -1,0 +1,39 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    TF_VERSION: "1.15.7"
+    CHECKOV_VERSION: "3.3.7"
+    KUBECTL_VERSION: "v1.36.2"
+    HELM_VERSION: "v3.21.2"
+
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - ./codebuild/scripts/install-common.sh
+      - ./codebuild/scripts/install-terraform.sh "$TF_VERSION"
+      - ./codebuild/scripts/install-checkov.sh "$CHECKOV_VERSION"
+      - ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
+      - ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
+      - terraform version
+      - checkov --version
+      - kubectl version --client=true
+      - helm version
+  pre_build:
+    commands:
+      - cd environment
+      - terraform fmt -check -recursive
+      - terraform init
+      - terraform validate
+      - checkov -d . --quiet
+  build:
+    commands:
+      - terraform plan -out=tfplan
+      - terraform apply -auto-approve tfplan
+  post_build:
+    commands:
+      - aws eks update-kubeconfig --name jjp6402-eks --region "$AWS_REGION"
+      - kubectl get nodes
+      - kubectl get ns

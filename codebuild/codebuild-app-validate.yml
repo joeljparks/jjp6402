@@ -1,0 +1,27 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    KUBECTL_VERSION: "v1.36.2"
+    EKS_CLUSTER_NAME: "jjp6402-eks"
+
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - ./codebuild/scripts/install-common.sh
+      - ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
+  pre_build:
+    commands:
+      - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+  build:
+    commands:
+      - kubectl get pods -n tasky
+      - kubectl get svc -n tasky
+      - kubectl get ingress -n tasky
+      - kubectl rollout status deployment/tasky -n tasky --timeout=300s
+      - kubectl exec -n tasky deploy/tasky -- cat /wizexercise.txt
+      - export ALB_HOST=$(kubectl get ingress tasky -n tasky -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+      - test -n "$ALB_HOST"
+      - curl -fsS "http://${ALB_HOST}/healthz"

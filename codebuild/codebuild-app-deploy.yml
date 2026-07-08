@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    KUBECTL_VERSION: "v1.36.2"
+    HELM_VERSION: "v3.21.2"
+    NOTATION_VERSION: "1.3.0"
+    EKS_CLUSTER_NAME: "jjp6402-eks"
+
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - ./codebuild/scripts/install-common.sh
+      - ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
+      - ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
+      - ./codebuild/scripts/install-notation.sh "$NOTATION_VERSION"
+      - ./codebuild/scripts/install-aws-signer-notation-plugin.sh
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - source image.env
+      - notation verify "$IMAGE_REF"
+      - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+  build:
+    commands:
+      - cd app/tasky/k8s
+      - kubectl apply -f namespace.yaml
+      - kubectl apply -f serviceaccount.yaml
+      - kubectl apply -f clusterrolebinding.yaml
+      - kubectl apply -f service.yaml
+      - kubectl apply -f ingress.yaml
+      - sed "s|__IMAGE__|${IMAGE_REF}|g" deployment.yaml | kubectl apply -f -
+      - kubectl annotate deployment tasky -n tasky jjp6402.io/image-signature-verified=true --overwrite
+      - kubectl rollout status deployment/tasky -n tasky --timeout=300s
+
+artifacts:
+  files:
+    - image.env
+  discard-paths: yes

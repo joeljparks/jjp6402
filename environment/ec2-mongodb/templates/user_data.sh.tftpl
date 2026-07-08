@@ -1,0 +1,61 @@
+#!/bin/bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y gnupg curl ca-certificates awscli cron
+curl -fsSL https://pgp.mongodb.com/server-5.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-5.0.gpg
+echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-5.0.list
+apt-get update -y
+apt-get install -y mongodb-org=${mongodb_version} mongodb-org-database=${mongodb_version} mongodb-org-server=${mongodb_version} mongodb-org-shell=${mongodb_version} mongodb-org-mongos=${mongodb_version} mongodb-org-tools=${mongodb_version}
+
+sed -i 's/^  bindIp:.*/  bindIp: 0.0.0.0/' /etc/mongod.conf
+systemctl enable mongod
+systemctl start mongod
+
+until mongosh --eval 'db.runCommand({ ping: 1 })'; do sleep 5; done
+
+mongosh admin <<EOF
+db.createUser({
+  user: "${admin_user}",
+  pwd: "${admin_password}",
+  roles: [ { role: "root", db: "admin" } ]
+})
+EOF
+
+cat <<EOF >> /etc/mongod.conf
+security:
+  authorization: enabled
+EOF
+
+systemctl restart mongod
+sleep 10
+
+mongosh admin -u "${admin_user}" -p "${admin_password}" <<EOF
+db = db.getSiblingDB("${app_database}")
+db.createUser({
+  user: "${app_user}",
+  pwd: "${app_password}",
+  roles: [ { role: "readWrite", db: "${app_database}" } ]
+})
+EOF
+
+cat >/usr/local/bin/mongodb-backup.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+STAMP=$(date +%Y%m%d%H%M%S)
+OUT="/tmp/mongodb-$STAMP"
+mkdir -p "$OUT"
+mongodump --username "${admin_user}" --password "${admin_password}" --authenticationDatabase admin --out "$OUT"
+tar -czf "/tmp/mongodb-$STAMP.tar.gz" -C "$OUT" .
+aws s3 cp "/tmp/mongodb-$STAMP.tar.gz" "s3://${backup_bucket}/mongodb-$STAMP.tar.gz" --region "${aws_region}"
+rm -rf "$OUT" "/tmp/mongodb-$STAMP.tar.gz"
+EOF
+
+chmod 700 /usr/local/bin/mongodb-backup.sh
+
+cat >/etc/cron.d/mongodb-backup <<EOF
+0 2 * * * root /usr/local/bin/mongodb-backup.sh
+EOF
+
+/usr/local/bin/mongodb-backup.sh || true
