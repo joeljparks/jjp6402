@@ -12,11 +12,14 @@ phases:
   install:
     commands:
       - set -euo pipefail
-      - ./codebuild/scripts/install-common.sh
-      - ./codebuild/scripts/install-terraform.sh "$TF_VERSION"
-      - ./codebuild/scripts/install-checkov.sh "$CHECKOV_VERSION"
-      - ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
-      - ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
+      - pwd
+      - ls -la codebuild/scripts
+      - chmod +x codebuild/scripts/*.sh
+      - bash ./codebuild/scripts/install-common.sh
+      - bash ./codebuild/scripts/install-terraform.sh "$TF_VERSION"
+      - bash ./codebuild/scripts/install-checkov.sh "$CHECKOV_VERSION"
+      - bash ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
+      - bash ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
       - terraform version
       - checkov --version
       - kubectl version --client=true

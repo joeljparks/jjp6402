@@ -1,0 +1,139 @@
+# Bootstrap Step-by-Step
+
+## Purpose
+
+This bootstrap process creates the minimum CI/CD foundation required before the normal environment and application pipelines can run.
+
+Bootstrap creates the launchpad only. It does not deploy the workload environment, EKS application runtime, MongoDB EC2 instance, S3 backup exposure, or application workload.
+
+## Repository
+
+GitHub repository: joeljparks/jjp6402
+Default branch: main
+AWS region: us-east-2
+AWS account: 552709242511
+GitHub connection name: jjp6402-github
+
+## Step 1 - Confirm local AWS access
+
+1. Authenticate to the target AWS account.
+2. Confirm the active AWS account and identity.
+
+   aws sts get-caller-identity
+
+3. Confirm the active region is us-east-2.
+
+   aws configure get region
+
+4. Set the region if needed.
+
+   export AWS_REGION=us-east-2
+   export AWS_DEFAULT_REGION=us-east-2
+
+## Step 2 - Initialize bootstrap Terraform
+
+1. Change into the bootstrap directory.
+
+   cd bootstrap
+
+2. Initialize Terraform.
+
+   terraform init
+
+3. Validate the bootstrap Terraform.
+
+   terraform validate
+
+4. Review formatting.
+
+   terraform fmt -check
+
+## Step 3 - Review bootstrap plan
+
+1. Generate the bootstrap plan.
+
+   terraform plan
+
+2. Confirm the plan creates only the bootstrap foundation:
+   - Terraform backend S3 bucket
+   - CodePipeline artifact bucket
+   - initial IAM roles
+   - AWS CodeConnections GitHub connection
+   - environment CodePipeline
+   - application CodePipeline
+   - CodeBuild projects used by those pipelines
+
+3. Confirm the plan does not create the workload environment:
+   - no VPC
+   - no EKS cluster
+   - no MongoDB EC2 instance
+   - no application deployment
+   - no public S3 backup bucket
+
+## Step 4 - Apply bootstrap
+
+1. Apply the bootstrap Terraform.
+
+   terraform apply
+
+2. Capture the outputs:
+   - GitHub connection ARN
+   - environment pipeline name
+   - application pipeline name
+   - artifact bucket name
+   - Terraform state bucket name
+
+## Step 5 - Complete GitHub connection authorization
+
+1. Open the AWS console in us-east-2.
+2. Go to Developer Tools.
+3. Open Settings.
+4. Open Connections.
+5. Select the connection named jjp6402-github.
+6. Choose Update pending connection.
+7. Authorize the AWS GitHub connector.
+8. Grant access to the GitHub repository joeljparks/jjp6402.
+9. Confirm the connection status changes from Pending to Available.
+
+## Step 6 - Push code
+
+1. Commit the generated code to GitHub.
+
+   git add bootstrap environment app codebuild README.md .gitignore
+   git commit -m "Initial environment and application pipeline implementation"
+   git push origin main
+
+2. Confirm the environment pipeline starts from the main branch.
+
+## Step 7 - Run the environment pipeline
+
+1. Watch the environment pipeline execution.
+2. Confirm CodeBuild runs Terraform validation, Checkov, plan, apply, and validation.
+3. Confirm the AWS environment is created.
+
+## Step 8 - Run the application pipeline
+
+1. Confirm the application pipeline starts from the main branch.
+2. Confirm the application build stage builds, scans, pushes, signs, and verifies the image.
+3. Confirm Kubernetes deployment runs only after signature verification succeeds.
+
+## Step 9 - Validate deployment
+
+1. Validate Kubernetes resources.
+
+   kubectl get pods -n tasky
+   kubectl get svc -n tasky
+   kubectl get ingress -n tasky
+
+2. Validate rollout status.
+
+   kubectl rollout status deployment/tasky -n tasky
+
+3. Validate wizexercise.txt in the running container.
+
+   kubectl exec -n tasky deploy/tasky -- cat /wizexercise.txt
+
+4. Validate application access through the public ALB.
+5. Validate MongoDB-backed application data.
+6. Validate public S3 backup read and listing.
+7. Validate expected findings for intentional variances.

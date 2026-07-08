@@ -1,1 +1,0 @@
-This part of the repository is intended to define the Terraform code necessary for environment creation.  

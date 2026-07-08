@@ -1,1 +1,0 @@
-This part of the repository is intended to define the assets necessary to run CodeBuild.

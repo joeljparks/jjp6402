@@ -12,14 +12,20 @@ phases:
   install:
     commands:
       - set -euo pipefail
-      - ./codebuild/scripts/install-common.sh
-      - ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
-      - ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
-      - ./codebuild/scripts/install-notation.sh "$NOTATION_VERSION"
-      - ./codebuild/scripts/install-aws-signer-notation-plugin.sh
+      - pwd
+      - ls -la codebuild/scripts
+      - chmod +x codebuild/scripts/*.sh
+      - bash ./codebuild/scripts/install-common.sh
+      - bash ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
+      - bash ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
+      - bash ./codebuild/scripts/install-notation.sh "$NOTATION_VERSION"
+      - bash ./codebuild/scripts/install-aws-signer-notation-plugin.sh
   pre_build:
     commands:
       - set -euo pipefail
+      - pwd
+      - ls -la codebuild/scripts
+      - chmod +x codebuild/scripts/*.sh
       - source image.env
       - notation verify "$IMAGE_REF"
       - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"

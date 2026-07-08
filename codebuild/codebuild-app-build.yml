@@ -13,17 +13,23 @@ phases:
   install:
     commands:
       - set -euo pipefail
-      - ./codebuild/scripts/install-common.sh
-      - ./codebuild/scripts/install-go.sh "$GO_VERSION"
-      - ./codebuild/scripts/install-trivy.sh "$TRIVY_VERSION"
-      - ./codebuild/scripts/install-notation.sh "$NOTATION_VERSION"
-      - ./codebuild/scripts/install-aws-signer-notation-plugin.sh
+      - pwd
+      - ls -la codebuild/scripts
+      - chmod +x codebuild/scripts/*.sh
+      - bash ./codebuild/scripts/install-common.sh
+      - bash ./codebuild/scripts/install-go.sh "$GO_VERSION"
+      - bash ./codebuild/scripts/install-trivy.sh "$TRIVY_VERSION"
+      - bash ./codebuild/scripts/install-notation.sh "$NOTATION_VERSION"
+      - bash ./codebuild/scripts/install-aws-signer-notation-plugin.sh
       - go version
       - trivy --version
       - notation version
   pre_build:
     commands:
       - set -euo pipefail
+      - pwd
+      - ls -la codebuild/scripts
+      - chmod +x codebuild/scripts/*.sh
       - cd app/tasky
       - test -f wizexercise.txt
       - grep -q "COPY wizexercise.txt /wizexercise.txt" Dockerfile

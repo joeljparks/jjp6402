@@ -1,0 +1,18 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiresignatureannotation
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireSignatureAnnotation
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiresignatureannotation
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Pod"
+          input.review.object.metadata.annotations["jjp6402.io/image-signature-verified"] != "true"
+          msg := "pod must carry image signature verification annotation"
+        }

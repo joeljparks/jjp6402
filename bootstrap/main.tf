@@ -96,6 +96,17 @@ resource "aws_iam_role_policy" "codebuild" {
           aws_s3_bucket.terraform_state.arn,
           "${aws_s3_bucket.terraform_state.arn}/*"
       ]},
+      {
+        Effect = "Allow"
+        Action = [
+          "codeconnections:UseConnection",
+          "codestar-connections:UseConnection"
+        ]
+        Resource = [
+          aws_codeconnections_connection.github.arn,
+          replace(aws_codeconnections_connection.github.arn, ":codeconnections:", ":codestar-connections:")
+        ]
+      },
       { Effect = "Allow", Action = [
           "ecr:*", "eks:*", "ec2:*", "elasticloadbalancing:*", "iam:*",
           "s3:*", "cloudtrail:*", "config:*", "access-analyzer:*",
