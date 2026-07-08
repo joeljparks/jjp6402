@@ -7,9 +7,15 @@ variable "instance_profile_name" { type = string }
 variable "backup_bucket_name" { type = string }
 variable "mongodb_version" { type = string }
 variable "admin_user" { type = string }
-variable "admin_password" { type = string, sensitive = true }
+variable "admin_password" {
+  type      = string
+  sensitive = true
+}
 variable "app_user" { type = string }
-variable "app_password" { type = string, sensitive = true }
+variable "app_password" {
+  type      = string
+  sensitive = true
+}
 variable "app_database" { type = string }
 
 data "aws_ami" "ubuntu_1804" {
