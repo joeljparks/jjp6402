@@ -1,8 +1,11 @@
-variable "name_prefix" { type = string }
+variable "name_prefix" {
+  type = string
+}
 
 data "aws_iam_policy_document" "eks_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
       identifiers = ["eks.amazonaws.com"]
@@ -23,6 +26,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster" {
 data "aws_iam_policy_document" "ec2_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
       identifiers = ["ec2.amazonaws.com"]
@@ -67,7 +71,16 @@ resource "aws_iam_role_policy" "mongodb_permissive" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["s3:*", "ec2:RunInstances", "ec2:CreateTags", "ec2:Describe*"], Resource = "*" }
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:*",
+          "ec2:RunInstances",
+          "ec2:CreateTags",
+          "ec2:Describe*"
+        ]
+        Resource = "*"
+      }
     ]
   })
 }
@@ -75,6 +88,7 @@ resource "aws_iam_role_policy" "mongodb_permissive" {
 data "aws_iam_policy_document" "config_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
       identifiers = ["config.amazonaws.com"]
@@ -95,6 +109,7 @@ resource "aws_iam_role_policy_attachment" "config" {
 data "aws_iam_policy_document" "codedeploy_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
       identifiers = ["codedeploy.amazonaws.com"]
@@ -118,21 +133,53 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = [
-          "elasticloadbalancing:*", "ec2:Describe*", "ec2:CreateSecurityGroup",
-          "ec2:CreateTags", "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress",
-          "iam:CreateServiceLinkedRole", "acm:ListCertificates", "acm:DescribeCertificate",
-          "wafv2:GetWebACL", "wafv2:GetWebACLForResource", "wafv2:AssociateWebACL",
-          "wafv2:DisassociateWebACL", "shield:GetSubscriptionState", "shield:DescribeProtection",
-          "shield:CreateProtection", "shield:DeleteProtection"
-        ], Resource = "*" }
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:*",
+          "ec2:Describe*",
+          "ec2:CreateSecurityGroup",
+          "ec2:CreateTags",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "iam:CreateServiceLinkedRole",
+          "acm:ListCertificates",
+          "acm:DescribeCertificate",
+          "wafv2:GetWebACL",
+          "wafv2:GetWebACLForResource",
+          "wafv2:AssociateWebACL",
+          "wafv2:DisassociateWebACL",
+          "shield:GetSubscriptionState",
+          "shield:DescribeProtection",
+          "shield:CreateProtection",
+          "shield:DeleteProtection"
+        ]
+        Resource = "*"
+      }
     ]
   })
 }
 
-output "eks_cluster_role_arn" { value = aws_iam_role.eks_cluster.arn }
-output "eks_node_role_arn" { value = aws_iam_role.eks_node.arn }
-output "mongodb_instance_profile_name" { value = aws_iam_instance_profile.mongodb.name }
-output "config_role_arn" { value = aws_iam_role.config.arn }
-output "codedeploy_role_arn" { value = aws_iam_role.codedeploy.arn }
-output "aws_load_balancer_controller_policy_arn" { value = aws_iam_policy.aws_load_balancer_controller.arn }
+output "eks_cluster_role_arn" {
+  value = aws_iam_role.eks_cluster.arn
+}
+
+output "eks_node_role_arn" {
+  value = aws_iam_role.eks_node.arn
+}
+
+output "mongodb_instance_profile_name" {
+  value = aws_iam_instance_profile.mongodb.name
+}
+
+output "config_role_arn" {
+  value = aws_iam_role.config.arn
+}
+
+output "codedeploy_role_arn" {
+  value = aws_iam_role.codedeploy.arn
+}
+
+output "aws_load_balancer_controller_policy_arn" {
+  value = aws_iam_policy.aws_load_balancer_controller.arn
+}

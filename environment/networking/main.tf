@@ -1,8 +1,22 @@
-variable "name_prefix" { type = string }
-variable "vpc_cidr" { type = string }
-variable "public_subnet_cidr" { type = string }
-variable "private_subnet_cidr" { type = string }
-variable "availability_zone" { type = string }
+variable "name_prefix" {
+  type = string
+}
+
+variable "vpc_cidr" {
+  type = string
+}
+
+variable "public_subnet_cidr" {
+  type = string
+}
+
+variable "private_subnet_cidr" {
+  type = string
+}
+
+variable "availability_zone" {
+  type = string
+}
 
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
@@ -16,7 +30,10 @@ resource "aws_vpc" "this" {
 
 resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
-  tags = { Name = "${var.name_prefix}-igw" }
+
+  tags = {
+    Name = "${var.name_prefix}-igw"
+  }
 }
 
 resource "aws_subnet" "public" {
@@ -44,13 +61,19 @@ resource "aws_subnet" "private" {
 
 resource "aws_eip" "nat" {
   domain = "vpc"
-  tags   = { Name = "${var.name_prefix}-nat-eip" }
+
+  tags = {
+    Name = "${var.name_prefix}-nat-eip"
+  }
 }
 
 resource "aws_nat_gateway" "this" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public.id
-  tags          = { Name = "${var.name_prefix}-nat" }
+
+  tags = {
+    Name = "${var.name_prefix}-nat"
+  }
 
   depends_on = [aws_internet_gateway.this]
 }
@@ -63,7 +86,9 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.this.id
   }
 
-  tags = { Name = "${var.name_prefix}-public-rt" }
+  tags = {
+    Name = "${var.name_prefix}-public-rt"
+  }
 }
 
 resource "aws_route_table" "private" {
@@ -74,7 +99,9 @@ resource "aws_route_table" "private" {
     nat_gateway_id = aws_nat_gateway.this.id
   }
 
-  tags = { Name = "${var.name_prefix}-private-rt" }
+  tags = {
+    Name = "${var.name_prefix}-private-rt"
+  }
 }
 
 resource "aws_route_table_association" "public" {
@@ -87,6 +114,14 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-output "vpc_id" { value = aws_vpc.this.id }
-output "public_subnet_id" { value = aws_subnet.public.id }
-output "private_subnet_id" { value = aws_subnet.private.id }
+output "vpc_id" {
+  value = aws_vpc.this.id
+}
+
+output "public_subnet_id" {
+  value = aws_subnet.public.id
+}
+
+output "private_subnet_id" {
+  value = aws_subnet.private.id
+}
