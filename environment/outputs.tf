@@ -45,3 +45,12 @@ output "jwt_secret" {
   value     = random_password.jwt_secret.result
   sensitive = true
 }
+
+
+output "signing_profile_name" {
+  value = module.signing.signing_profile_name
+}
+
+output "signing_profile_parameter_name" {
+  value = module.signing.signing_profile_parameter_name
+}

@@ -6,7 +6,7 @@ env:
     GO_VERSION: "1.26.5"
     TRIVY_VERSION: "v0.72.0"
     ECR_REPOSITORY: "jjp6402-tasky-app"
-    SIGNING_PROFILE_NAME: "jjp6402_container"
+    SIGNING_PROFILE_PARAMETER_NAME: "/jjp6402/signing-profile-name"
     ECR_CREDENTIAL_HELPER_VERSION: "v0.12.0"
 
 phases:
@@ -25,13 +25,16 @@ phases:
       - trivy --version
       - notation version
       - notation plugin ls
-      - bash ./codebuild/scripts/configure-notation-trust-policy.sh "$AWS_ACCOUNT_ID" "$AWS_REGION" "$ECR_REPOSITORY" "$SIGNING_PROFILE_NAME"
   pre_build:
     commands:
       - set -euo pipefail
       - pwd
       - ls -la codebuild/scripts
       - chmod +x codebuild/scripts/*.sh
+      - export SIGNING_PROFILE_NAME=$(aws ssm get-parameter --name "$SIGNING_PROFILE_PARAMETER_NAME" --query 'Parameter.Value' --output text)
+      - test -n "$SIGNING_PROFILE_NAME"
+      - 'echo "Using AWS Signer signing profile: ${SIGNING_PROFILE_NAME}"'
+      - bash ./codebuild/scripts/configure-notation-trust-policy.sh "$AWS_ACCOUNT_ID" "$AWS_REGION" "$ECR_REPOSITORY" "$SIGNING_PROFILE_NAME"
       - cd app/tasky
       - test -f wizexercise.txt
       - grep -q "COPY wizexercise.txt /wizexercise.txt" Dockerfile

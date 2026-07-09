@@ -110,8 +110,10 @@ resource "aws_iam_role_policy" "codebuild" {
       { Effect = "Allow", Action = [
           "ecr:*", "eks:*", "ec2:*", "elasticloadbalancing:*", "iam:*",
           "s3:*", "cloudtrail:*", "config:*", "access-analyzer:*",
-          "codeartifact:*", "codedeploy:*", "signer:*", "ssm:GetParameter",
-          "ssm:GetParameters", "sts:*"
+          "codeartifact:*", "codedeploy:*", "signer:*",
+          "ssm:GetParameter", "ssm:GetParameters", "ssm:PutParameter",
+          "ssm:DeleteParameter", "ssm:AddTagsToResource", "ssm:RemoveTagsFromResource",
+          "ssm:ListTagsForResource", "sts:*"
       ], Resource = "*" }
     ]
   })

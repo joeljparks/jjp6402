@@ -8,7 +8,7 @@ env:
     EKS_CLUSTER_NAME: "jjp6402-eks"
     ECR_CREDENTIAL_HELPER_VERSION: "v0.12.0"
     ECR_REPOSITORY: "jjp6402-tasky-app"
-    SIGNING_PROFILE_NAME: "jjp6402_container"
+    SIGNING_PROFILE_PARAMETER_NAME: "/jjp6402/signing-profile-name"
 
 phases:
   install:
@@ -26,7 +26,6 @@ phases:
       - helm version
       - notation version
       - notation plugin ls
-      - bash ./codebuild/scripts/configure-notation-trust-policy.sh "$AWS_ACCOUNT_ID" "$AWS_REGION" "$ECR_REPOSITORY" "$SIGNING_PROFILE_NAME"
   pre_build:
     commands:
       - set -euo pipefail
@@ -56,6 +55,10 @@ phases:
           exit 1
         fi
         test -n "${IMAGE_REF:-}"
+      - export SIGNING_PROFILE_NAME=$(aws ssm get-parameter --name "$SIGNING_PROFILE_PARAMETER_NAME" --query 'Parameter.Value' --output text)
+      - test -n "$SIGNING_PROFILE_NAME"
+      - 'echo "Using AWS Signer signing profile: ${SIGNING_PROFILE_NAME}"'
+      - bash ./codebuild/scripts/configure-notation-trust-policy.sh "$AWS_ACCOUNT_ID" "$AWS_REGION" "$ECR_REPOSITORY" "$SIGNING_PROFILE_NAME"
       - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
       - docker-credential-ecr-login version || true
       - cat "$HOME/.docker/config.json"

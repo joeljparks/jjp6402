@@ -48,3 +48,34 @@ if aws iam get-role-policy --role-name "${NAME_PREFIX}-mongodb-role" --policy-na
 else
   echo "No existing MongoDB permissive role policy found."
 fi
+
+
+SIGNING_PROFILE_PARAMETER_NAME="/${NAME_PREFIX}/signing-profile-name"
+if aws ssm get-parameter --name "$SIGNING_PROFILE_PARAMETER_NAME" >/dev/null 2>&1; then
+  if ! is_managed "module.signing.aws_ssm_parameter.signing_profile_name"; then
+    echo "Importing existing signing profile SSM parameter into Terraform state."
+    terraform import -input=false \
+      "module.signing.aws_ssm_parameter.signing_profile_name" \
+      "$SIGNING_PROFILE_PARAMETER_NAME"
+  else
+    echo "Terraform already manages module.signing.aws_ssm_parameter.signing_profile_name."
+  fi
+
+  EXISTING_SIGNING_PROFILE_NAME=$(aws ssm get-parameter \
+    --name "$SIGNING_PROFILE_PARAMETER_NAME" \
+    --query 'Parameter.Value' \
+    --output text)
+
+  if [ -n "$EXISTING_SIGNING_PROFILE_NAME" ] && [ "$EXISTING_SIGNING_PROFILE_NAME" != "None" ]; then
+    if ! is_managed "module.signing.aws_signer_signing_profile.container"; then
+      echo "Importing existing AWS Signer signing profile ${EXISTING_SIGNING_PROFILE_NAME} into Terraform state."
+      terraform import -input=false \
+        "module.signing.aws_signer_signing_profile.container" \
+        "$EXISTING_SIGNING_PROFILE_NAME"
+    else
+      echo "Terraform already manages module.signing.aws_signer_signing_profile.container."
+    fi
+  fi
+else
+  echo "No existing signing profile SSM parameter found. Terraform will create a new unique signing profile."
+fi
