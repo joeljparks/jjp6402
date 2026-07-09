@@ -110,27 +110,3 @@ module "kubernetes_addons" {
 
   depends_on = [module.eks]
 }
-
-resource "kubernetes_namespace_v1" "tasky" {
-  metadata {
-    name = "tasky"
-  }
-
-  depends_on = [module.eks]
-}
-
-resource "kubernetes_secret_v1" "mongodb_app" {
-  metadata {
-    name      = "${var.name_prefix}-mongodb-app"
-    namespace = kubernetes_namespace_v1.tasky.metadata[0].name
-  }
-
-  data = {
-    MONGODB_URL = "mongodb://${urlencode(var.mongodb_app_user)}:${urlencode(random_password.mongodb_app.result)}@${module.mongodb.private_ip}:27017/${var.mongodb_app_database}?authSource=${var.mongodb_app_database}"
-    SECRET_KEY  = random_password.jwt_secret.result
-  }
-
-  type = "Opaque"
-
-  depends_on = [module.eks, module.mongodb]
-}
