@@ -33,6 +33,11 @@ variable "private_subnet_cidr" {
   default = "10.1.0.0/24"
 }
 
+variable "private_subnet_az2_cidr" {
+  type    = string
+  default = "10.1.1.0/24"
+}
+
 variable "eks_version" {
   type    = string
   default = "1.36"

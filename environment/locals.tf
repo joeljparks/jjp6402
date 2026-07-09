@@ -4,5 +4,6 @@ locals {
     ManagedBy = "Terraform"
   }
 
-  az = "${var.aws_region}a"
+  az_a = "${var.aws_region}a"
+  az_b = "${var.aws_region}b"
 }

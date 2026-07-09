@@ -16,13 +16,15 @@ resource "random_password" "jwt_secret" {
 }
 
 module "network" {
-  source              = "./networking"
-  name_prefix         = var.name_prefix
-  vpc_cidr            = var.vpc_cidr
-  secondary_vpc_cidr  = var.secondary_vpc_cidr
-  public_subnet_cidr  = var.public_subnet_cidr
-  private_subnet_cidr = var.private_subnet_cidr
-  availability_zone   = local.az
+  source                      = "./networking"
+  name_prefix                 = var.name_prefix
+  vpc_cidr                    = var.vpc_cidr
+  secondary_vpc_cidr          = var.secondary_vpc_cidr
+  public_subnet_cidr          = var.public_subnet_cidr
+  private_subnet_cidr         = var.private_subnet_cidr
+  private_subnet_az2_cidr     = var.private_subnet_az2_cidr
+  availability_zone           = local.az_a
+  secondary_availability_zone = local.az_b
 }
 
 module "iam" {
@@ -44,7 +46,7 @@ module "eks" {
   source                   = "./eks"
   name_prefix              = var.name_prefix
   eks_version              = var.eks_version
-  private_subnet_ids       = [module.network.private_subnet_id]
+  private_subnet_ids       = module.network.private_subnet_ids
   cluster_role_arn         = module.iam.eks_cluster_role_arn
   node_role_arn            = module.iam.eks_node_role_arn
   vpc_cni_addon_version    = "v1.22.2-eksbuild.1"

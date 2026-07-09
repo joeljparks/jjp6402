@@ -18,7 +18,15 @@ variable "private_subnet_cidr" {
   type = string
 }
 
+variable "private_subnet_az2_cidr" {
+  type = string
+}
+
 variable "availability_zone" {
+  type = string
+}
+
+variable "secondary_availability_zone" {
   type = string
 }
 
@@ -63,7 +71,20 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zone
 
   tags = {
-    Name                              = "${var.name_prefix}-eks-private"
+    Name                              = "${var.name_prefix}-eks-private-a"
+    "kubernetes.io/role/internal-elb" = "1"
+  }
+
+  depends_on = [aws_vpc_ipv4_cidr_block_association.secondary]
+}
+
+resource "aws_subnet" "private_az2" {
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = var.private_subnet_az2_cidr
+  availability_zone = var.secondary_availability_zone
+
+  tags = {
+    Name                              = "${var.name_prefix}-eks-private-b"
     "kubernetes.io/role/internal-elb" = "1"
   }
 
@@ -125,6 +146,11 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
+resource "aws_route_table_association" "private_az2" {
+  subnet_id      = aws_subnet.private_az2.id
+  route_table_id = aws_route_table.private.id
+}
+
 output "vpc_id" {
   value = aws_vpc.this.id
 }
@@ -135,4 +161,11 @@ output "public_subnet_id" {
 
 output "private_subnet_id" {
   value = aws_subnet.private.id
+}
+
+output "private_subnet_ids" {
+  value = [
+    aws_subnet.private.id,
+    aws_subnet.private_az2.id,
+  ]
 }
