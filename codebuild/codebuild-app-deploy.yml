@@ -49,7 +49,8 @@ phases:
           exit 1
         fi
         echo "Using image metadata from ${IMAGE_ENV_PATH}."
-        source "$IMAGE_ENV_PATH"
+        cp "$IMAGE_ENV_PATH" "${CODEBUILD_SRC_DIR}/image.env"
+        source "${CODEBUILD_SRC_DIR}/image.env"
         if [ "${BUILD_STATUS:-}" != "SUCCEEDED" ]; then
           echo "Build artifact reports BUILD_STATUS=${BUILD_STATUS:-unset}; refusing to deploy."
           exit 1
