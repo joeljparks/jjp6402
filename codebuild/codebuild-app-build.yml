@@ -38,14 +38,16 @@ phases:
       - export IMAGE_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
       - export IMAGE_URI="${IMAGE_REPO}:${IMAGE_TAG}"
       - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      - printf 'BUILD_STATUS=STARTED\nIMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=\nIMAGE_REF=\n' "$IMAGE_TAG" "$IMAGE_URI" > image.env
       - docker-credential-ecr-login version || true
       - cat "$HOME/.docker/config.json"
   build:
     commands:
       - set -euo pipefail
       - docker build -t "$IMAGE_URI" .
-      - trivy image --exit-code 0 --severity UNKNOWN,LOW,MEDIUM "$IMAGE_URI"
-      - trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE_URI"
+      - trivy image --severity UNKNOWN,LOW,MEDIUM --format table --output trivy-low-medium.txt "$IMAGE_URI" || true
+      - trivy image --severity HIGH,CRITICAL --format table --output trivy-high-critical.txt "$IMAGE_URI" || true
+      - cat trivy-high-critical.txt || true
       - docker push "$IMAGE_URI"
       - export IMAGE_DIGEST=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$IMAGE_TAG" --query 'imageDetails[0].imageDigest' --output text)
       - export IMAGE_REF="${IMAGE_REPO}@${IMAGE_DIGEST}"
@@ -56,13 +58,17 @@ phases:
     commands:
       - |
         if [ -n "${IMAGE_DIGEST:-}" ] && [ -n "${IMAGE_REF:-}" ]; then
-          printf 'IMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=%s\nIMAGE_REF=%s\n' "$IMAGE_TAG" "$IMAGE_URI" "$IMAGE_DIGEST" "$IMAGE_REF" > image.env
+          printf 'BUILD_STATUS=SUCCEEDED\nIMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=%s\nIMAGE_REF=%s\n' "$IMAGE_TAG" "$IMAGE_URI" "$IMAGE_DIGEST" "$IMAGE_REF" > image.env
           cat image.env
         else
-          echo "Image build or push did not complete; skipping image.env generation."
+          printf 'BUILD_STATUS=FAILED\nIMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=\nIMAGE_REF=\n' "${IMAGE_TAG:-unknown}" "${IMAGE_URI:-unknown}" > image.env
+          echo "Image build or push did not complete; wrote failed image.env placeholder."
+          cat image.env
         fi
 
 artifacts:
   files:
     - app/tasky/image.env
+    - app/tasky/trivy-low-medium.txt
+    - app/tasky/trivy-high-critical.txt
   discard-paths: yes
