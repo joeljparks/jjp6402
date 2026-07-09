@@ -27,6 +27,15 @@ phases:
   pre_build:
     commands:
       - cd environment
+
+      - echo "Source commit: ${CODEBUILD_RESOLVED_SOURCE_VERSION:-unknown}"
+      - git rev-parse --short HEAD 2>/dev/null || true
+      - echo "Checking for stale Terraform resources before plan."
+      - |
+        if grep -R -n -E 'data "aws_ami" "ubuntu_1804"|resource "kubernetes_namespace" "tasky"|kubernetes_namespace\.tasky|kubernetes_namespace\.gatekeeper_system|kubernetes_service_account\.lbc' .; then
+          echo "Stale Terraform source detected. Commit the patched files before rerunning the pipeline."
+          exit 1
+        fi
       - terraform fmt -check -recursive
       - terraform init
       - terraform validate
@@ -36,8 +45,14 @@ phases:
     commands:
       - terraform plan -out=tfplan
       - terraform apply -auto-approve tfplan
+      - touch /tmp/environment_apply_complete
   post_build:
     commands:
-      - aws eks update-kubeconfig --name jjp6402-eks --region "$AWS_REGION"
-      - kubectl get nodes
-      - kubectl get ns
+      - |
+        if [ -f /tmp/environment_apply_complete ]; then
+          aws eks update-kubeconfig --name jjp6402-eks --region "$AWS_REGION"
+          kubectl get nodes
+          kubectl get ns
+        else
+          echo "Skipping EKS validation because terraform apply did not complete."
+        fi

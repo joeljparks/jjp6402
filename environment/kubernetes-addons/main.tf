@@ -6,7 +6,7 @@ variable "eks_oidc_provider_arn" { type = string }
 variable "eks_oidc_provider_url" { type = string }
 variable "aws_load_balancer_policy_arn" { type = string }
 
-resource "kubernetes_namespace" "gatekeeper_system" {
+resource "kubernetes_namespace_v1" "gatekeeper_system" {
   metadata {
     name = "gatekeeper-system"
   }
@@ -17,7 +17,7 @@ resource "helm_release" "gatekeeper" {
   repository = "https://open-policy-agent.github.io/gatekeeper/charts"
   chart      = "gatekeeper"
   version    = "3.22.2"
-  namespace  = kubernetes_namespace.gatekeeper_system.metadata[0].name
+  namespace  = kubernetes_namespace_v1.gatekeeper_system.metadata[0].name
 }
 
 data "aws_iam_policy_document" "lbc_assume" {
@@ -53,7 +53,7 @@ resource "aws_iam_role_policy_attachment" "lbc" {
   policy_arn = var.aws_load_balancer_policy_arn
 }
 
-resource "kubernetes_service_account" "lbc" {
+resource "kubernetes_service_account_v1" "lbc" {
   metadata {
     name      = "aws-load-balancer-controller"
     namespace = "kube-system"
@@ -76,6 +76,6 @@ resource "helm_release" "aws_load_balancer_controller" {
     { name = "region", value = var.aws_region },
     { name = "vpcId", value = var.vpc_id },
     { name = "serviceAccount.create", value = "false" },
-    { name = "serviceAccount.name", value = kubernetes_service_account.lbc.metadata[0].name }
+    { name = "serviceAccount.name", value = kubernetes_service_account_v1.lbc.metadata[0].name }
   ]
 }

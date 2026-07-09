@@ -18,19 +18,8 @@ variable "app_password" {
 }
 variable "app_database" { type = string }
 
-data "aws_ami" "ubuntu_1804" {
-  most_recent = true
-  owners      = ["099720109477"]
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
+data "aws_ssm_parameter" "ubuntu_1804_ami" {
+  name = "/aws/service/canonical/ubuntu/server/18.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 }
 
 resource "aws_security_group" "mongodb" {
@@ -80,7 +69,7 @@ locals {
 }
 
 resource "aws_instance" "mongodb" {
-  ami                         = data.aws_ami.ubuntu_1804.id
+  ami                         = data.aws_ssm_parameter.ubuntu_1804_ami.value
   instance_type               = "t3.micro"
   subnet_id                   = var.subnet_id
   associate_public_ip_address = true

@@ -105,7 +105,7 @@ module "kubernetes_addons" {
   depends_on = [module.eks]
 }
 
-resource "kubernetes_namespace" "tasky" {
+resource "kubernetes_namespace_v1" "tasky" {
   metadata {
     name = "tasky"
   }
@@ -113,10 +113,10 @@ resource "kubernetes_namespace" "tasky" {
   depends_on = [module.eks]
 }
 
-resource "kubernetes_secret" "mongodb_app" {
+resource "kubernetes_secret_v1" "mongodb_app" {
   metadata {
     name      = "${var.name_prefix}-mongodb-app"
-    namespace = kubernetes_namespace.tasky.metadata[0].name
+    namespace = kubernetes_namespace_v1.tasky.metadata[0].name
   }
 
   data = {
