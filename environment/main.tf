@@ -19,6 +19,7 @@ module "network" {
   source              = "./networking"
   name_prefix         = var.name_prefix
   vpc_cidr            = var.vpc_cidr
+  secondary_vpc_cidr  = var.secondary_vpc_cidr
   public_subnet_cidr  = var.public_subnet_cidr
   private_subnet_cidr = var.private_subnet_cidr
   availability_zone   = local.az

@@ -15,7 +15,12 @@ variable "name_prefix" {
 
 variable "vpc_cidr" {
   type    = string
-  default = "10.0.0.0/15"
+  default = "10.0.0.0/16"
+}
+
+variable "secondary_vpc_cidr" {
+  type    = string
+  default = "10.1.0.0/16"
 }
 
 variable "public_subnet_cidr" {

@@ -6,6 +6,10 @@ variable "vpc_cidr" {
   type = string
 }
 
+variable "secondary_vpc_cidr" {
+  type = string
+}
+
 variable "public_subnet_cidr" {
   type = string
 }
@@ -26,6 +30,11 @@ resource "aws_vpc" "this" {
   tags = {
     Name = var.name_prefix
   }
+}
+
+resource "aws_vpc_ipv4_cidr_block_association" "secondary" {
+  vpc_id     = aws_vpc.this.id
+  cidr_block = var.secondary_vpc_cidr
 }
 
 resource "aws_internet_gateway" "this" {
@@ -57,6 +66,8 @@ resource "aws_subnet" "private" {
     Name                              = "${var.name_prefix}-eks-private"
     "kubernetes.io/role/internal-elb" = "1"
   }
+
+  depends_on = [aws_vpc_ipv4_cidr_block_association.secondary]
 }
 
 resource "aws_eip" "nat" {
