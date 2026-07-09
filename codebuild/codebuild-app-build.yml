@@ -25,6 +25,7 @@ phases:
       - trivy --version
       - notation version
       - notation plugin ls
+      - bash ./codebuild/scripts/configure-notation-trust-policy.sh "$AWS_ACCOUNT_ID" "$AWS_REGION" "$ECR_REPOSITORY" "$SIGNING_PROFILE_NAME"
   pre_build:
     commands:
       - set -euo pipefail
@@ -53,7 +54,7 @@ phases:
       - export IMAGE_REF="${IMAGE_REPO}@${IMAGE_DIGEST}"
       - export SIGNING_PROFILE_ARN="arn:aws:signer:${AWS_REGION}:${AWS_ACCOUNT_ID}:/signing-profiles/${SIGNING_PROFILE_NAME}"
       - notation sign --plugin com.amazonaws.signer.notation.plugin --id "$SIGNING_PROFILE_ARN" --plugin-config "aws-region=${AWS_REGION}" "$IMAGE_REF"
-      - notation verify "$IMAGE_REF"
+      - notation verify --plugin-config "aws-region=${AWS_REGION}" "$IMAGE_REF"
   post_build:
     commands:
       - |

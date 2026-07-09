@@ -7,6 +7,8 @@ env:
     HELM_VERSION: "v3.21.2"
     EKS_CLUSTER_NAME: "jjp6402-eks"
     ECR_CREDENTIAL_HELPER_VERSION: "v0.12.0"
+    ECR_REPOSITORY: "jjp6402-tasky-app"
+    SIGNING_PROFILE_NAME: "jjp6402_container"
 
 phases:
   install:
@@ -24,6 +26,7 @@ phases:
       - helm version
       - notation version
       - notation plugin ls
+      - bash ./codebuild/scripts/configure-notation-trust-policy.sh "$AWS_ACCOUNT_ID" "$AWS_REGION" "$ECR_REPOSITORY" "$SIGNING_PROFILE_NAME"
   pre_build:
     commands:
       - set -euo pipefail
@@ -32,7 +35,7 @@ phases:
       - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
       - docker-credential-ecr-login version || true
       - cat "$HOME/.docker/config.json"
-      - notation verify "$IMAGE_REF"
+      - notation verify --plugin-config "aws-region=${AWS_REGION}" "$IMAGE_REF"
       - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
   build:
     commands:
