@@ -17,14 +17,48 @@ phases:
       - bash ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
   pre_build:
     commands:
+      - set -euo pipefail
       - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
   build:
     commands:
-      - kubectl get pods -n tasky
-      - kubectl get svc -n tasky
-      - kubectl get ingress -n tasky
+      - set -euo pipefail
+      - kubectl get pods -n tasky -o wide
+      - kubectl get svc -n tasky -o wide
+      - kubectl get ingress -n tasky -o wide
       - kubectl rollout status deployment/tasky -n tasky --timeout=300s
       - kubectl exec -n tasky deploy/tasky -- cat /wizexercise.txt
-      - export ALB_HOST=$(kubectl get ingress tasky -n tasky -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-      - test -n "$ALB_HOST"
-      - curl -fsS "http://${ALB_HOST}/healthz"
+      - |
+        ALB_HOST=""
+        for attempt in $(seq 1 60); do
+          ALB_HOST=$(kubectl get ingress tasky -n tasky -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+          if [ -n "$ALB_HOST" ]; then
+            echo "Ingress ALB hostname: ${ALB_HOST}"
+            break
+          fi
+          echo "Waiting for AWS Load Balancer Controller to publish ingress hostname (${attempt}/60)."
+          kubectl get ingress tasky -n tasky -o wide || true
+          sleep 10
+        done
+        if [ -z "$ALB_HOST" ]; then
+          echo "Ingress hostname was not assigned. Dumping diagnostics."
+          kubectl describe ingress tasky -n tasky || true
+          kubectl get ingress tasky -n tasky -o yaml || true
+          kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller -o wide || true
+          kubectl logs -n kube-system deployment/aws-load-balancer-controller --tail=200 || true
+          exit 1
+        fi
+        export ALB_HOST
+      - |
+        for attempt in $(seq 1 60); do
+          if curl -fsS "http://${ALB_HOST}/healthz"; then
+            echo "Application health check succeeded."
+            exit 0
+          fi
+          echo "Waiting for ALB/application health check (${attempt}/60)."
+          sleep 10
+        done
+        echo "Application health check did not succeed before timeout."
+        kubectl describe ingress tasky -n tasky || true
+        kubectl get pods -n tasky -o wide || true
+        kubectl logs -n tasky deployment/tasky --tail=200 || true
+        exit 1
