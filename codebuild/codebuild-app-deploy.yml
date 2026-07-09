@@ -61,6 +61,49 @@ phases:
       - cat "$HOME/.docker/config.json"
       - notation verify --plugin-config "aws-region=${AWS_REGION}" "$IMAGE_REF"
       - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+      - |
+        CLUSTER_VPC_ID=$(aws eks describe-cluster \
+          --name "$EKS_CLUSTER_NAME" \
+          --region "$AWS_REGION" \
+          --query 'cluster.resourcesVpcConfig.vpcId' \
+          --output text)
+        export CLUSTER_VPC_ID
+        echo "EKS VPC ID: ${CLUSTER_VPC_ID}"
+
+        PUBLIC_ALB_SUBNET_ROWS=$(aws ec2 describe-subnets \
+          --region "$AWS_REGION" \
+          --filters \
+            "Name=vpc-id,Values=${CLUSTER_VPC_ID}" \
+            "Name=tag:kubernetes.io/role/elb,Values=1" \
+          --query 'Subnets[?MapPublicIpOnLaunch==`true`].[SubnetId,AvailabilityZone,CidrBlock]' \
+          --output text | sort -k2)
+        export PUBLIC_ALB_SUBNET_ROWS
+
+        echo "Eligible public ALB subnets:"
+        if [ -n "$PUBLIC_ALB_SUBNET_ROWS" ]; then
+          printf '%s\n' "$PUBLIC_ALB_SUBNET_ROWS"
+        else
+          echo "none"
+        fi
+
+        PUBLIC_ALB_SUBNET_IDS=$(printf '%s\n' "$PUBLIC_ALB_SUBNET_ROWS" | awk 'NF {print $1}' | paste -sd, -)
+        PUBLIC_ALB_SUBNET_COUNT=$(printf '%s\n' "$PUBLIC_ALB_SUBNET_ROWS" | awk 'NF {print $1}' | wc -l | tr -d ' ')
+        PUBLIC_ALB_AZ_COUNT=$(printf '%s\n' "$PUBLIC_ALB_SUBNET_ROWS" | awk 'NF {print $2}' | sort -u | wc -l | tr -d ' ')
+        export PUBLIC_ALB_SUBNET_IDS
+
+        echo "Public ALB subnet IDs: ${PUBLIC_ALB_SUBNET_IDS:-none}"
+        echo "Public ALB subnet count: ${PUBLIC_ALB_SUBNET_COUNT}"
+        echo "Public ALB AZ count: ${PUBLIC_ALB_AZ_COUNT}"
+
+        if [ "$PUBLIC_ALB_SUBNET_COUNT" -lt 2 ] || [ "$PUBLIC_ALB_AZ_COUNT" -lt 2 ]; then
+          echo "At least two public ALB subnets in different AZs are required."
+          aws ec2 describe-subnets \
+            --region "$AWS_REGION" \
+            --filters "Name=vpc-id,Values=${CLUSTER_VPC_ID}" \
+            --query 'Subnets[].{SubnetId:SubnetId,AZ:AvailabilityZone,Cidr:CidrBlock,MapPublic:MapPublicIpOnLaunch,Tags:Tags}' \
+            --output table || true
+          exit 1
+        fi
   build:
     commands:
       - set -euo pipefail
@@ -69,7 +112,13 @@ phases:
       - kubectl apply -f serviceaccount.yaml
       - kubectl apply -f clusterrolebinding.yaml
       - kubectl apply -f service.yaml
-      - kubectl apply -f ingress.yaml
+      - sed "s|__ALB_SUBNETS__|${PUBLIC_ALB_SUBNET_IDS}|g" ingress.yaml > /tmp/tasky-ingress.yaml
+      - |
+        echo "Rendered ingress manifest:"
+        cat /tmp/tasky-ingress.yaml
+      - kubectl apply -f /tmp/tasky-ingress.yaml
+      - kubectl annotate ingress tasky -n tasky jjp6402.io/reconcile-at="$(date +%s)" --overwrite
+      - kubectl get ingress tasky -n tasky -o jsonpath='{.metadata.annotations.alb\.ingress\.kubernetes\.io/subnets}{"\n"}'
       - sed "s|__IMAGE__|${IMAGE_REF}|g" deployment.yaml | kubectl apply -f -
       - kubectl annotate deployment tasky -n tasky jjp6402.io/image-signature-verified=true --overwrite
       - kubectl rollout status deployment/tasky -n tasky --timeout=300s

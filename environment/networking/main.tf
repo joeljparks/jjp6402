@@ -64,8 +64,9 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                     = "${var.name_prefix}-public-a"
-    "kubernetes.io/role/elb" = "1"
+    Name                                             = "${var.name_prefix}-public-a"
+    "kubernetes.io/role/elb"                         = "1"
+    ("kubernetes.io/cluster/${var.name_prefix}-eks") = "shared"
   }
 }
 
@@ -76,8 +77,9 @@ resource "aws_subnet" "public_az2" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                     = "${var.name_prefix}-public-b"
-    "kubernetes.io/role/elb" = "1"
+    Name                                             = "${var.name_prefix}-public-b"
+    "kubernetes.io/role/elb"                         = "1"
+    ("kubernetes.io/cluster/${var.name_prefix}-eks") = "shared"
   }
 }
 
@@ -87,8 +89,9 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zone
 
   tags = {
-    Name                              = "${var.name_prefix}-eks-private-a"
-    "kubernetes.io/role/internal-elb" = "1"
+    Name                                             = "${var.name_prefix}-eks-private-a"
+    "kubernetes.io/role/internal-elb"                = "1"
+    ("kubernetes.io/cluster/${var.name_prefix}-eks") = "shared"
   }
 
   depends_on = [aws_vpc_ipv4_cidr_block_association.secondary]
@@ -100,8 +103,9 @@ resource "aws_subnet" "private_az2" {
   availability_zone = var.secondary_availability_zone
 
   tags = {
-    Name                              = "${var.name_prefix}-eks-private-b"
-    "kubernetes.io/role/internal-elb" = "1"
+    Name                                             = "${var.name_prefix}-eks-private-b"
+    "kubernetes.io/role/internal-elb"                = "1"
+    ("kubernetes.io/cluster/${var.name_prefix}-eks") = "shared"
   }
 
   depends_on = [aws_vpc_ipv4_cidr_block_association.secondary]
