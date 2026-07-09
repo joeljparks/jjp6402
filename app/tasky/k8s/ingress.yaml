@@ -7,7 +7,9 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/load-balancer-name: jjp6402-ALB
+    alb.ingress.kubernetes.io/load-balancer-name: jjp6402-alb
+    alb.ingress.kubernetes.io/load-balancer-attributes: deletion_protection.enabled=false
+    alb.ingress.kubernetes.io/tags: Project=jjp6402,ManagedBy=aws-load-balancer-controller
     alb.ingress.kubernetes.io/subnets: __ALB_SUBNETS__
 spec:
   ingressClassName: alb

@@ -3,6 +3,7 @@ variable "name_prefix" { type = string }
 resource "aws_ecr_repository" "tasky" {
   name                 = "${var.name_prefix}-tasky-app"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
