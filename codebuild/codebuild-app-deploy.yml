@@ -6,6 +6,7 @@ env:
     KUBECTL_VERSION: "v1.36.2"
     HELM_VERSION: "v3.21.2"
     EKS_CLUSTER_NAME: "jjp6402-eks"
+    ECR_CREDENTIAL_HELPER_VERSION: "v0.12.0"
 
 phases:
   install:
@@ -18,6 +19,7 @@ phases:
       - bash ./codebuild/scripts/install-kubectl.sh "$KUBECTL_VERSION"
       - bash ./codebuild/scripts/install-helm.sh "$HELM_VERSION"
       - bash ./codebuild/scripts/install-aws-signer-notation-plugin.sh
+      - bash ./codebuild/scripts/install-ecr-credential-helper.sh "$ECR_CREDENTIAL_HELPER_VERSION" "$AWS_ACCOUNT_ID" "$AWS_REGION"
       - kubectl version --client=true
       - helm version
       - notation version
@@ -28,7 +30,8 @@ phases:
       - pwd
       - source image.env
       - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-      - aws ecr get-login-password --region "$AWS_REGION" | notation login --username AWS --password-stdin "$ECR_REGISTRY"
+      - docker-credential-ecr-login version || true
+      - cat "$HOME/.docker/config.json"
       - notation verify "$IMAGE_REF"
       - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
   build:

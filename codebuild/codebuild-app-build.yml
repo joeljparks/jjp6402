@@ -7,6 +7,7 @@ env:
     TRIVY_VERSION: "v0.72.0"
     ECR_REPOSITORY: "jjp6402-tasky-app"
     SIGNING_PROFILE_NAME: "jjp6402_container"
+    ECR_CREDENTIAL_HELPER_VERSION: "v0.12.0"
 
 phases:
   install:
@@ -19,6 +20,7 @@ phases:
       - bash ./codebuild/scripts/install-go.sh "$GO_VERSION"
       - bash ./codebuild/scripts/install-trivy.sh "$TRIVY_VERSION"
       - bash ./codebuild/scripts/install-aws-signer-notation-plugin.sh
+      - bash ./codebuild/scripts/install-ecr-credential-helper.sh "$ECR_CREDENTIAL_HELPER_VERSION" "$AWS_ACCOUNT_ID" "$AWS_REGION"
       - go version
       - trivy --version
       - notation version
@@ -36,8 +38,8 @@ phases:
       - export IMAGE_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
       - export IMAGE_URI="${IMAGE_REPO}:${IMAGE_TAG}"
       - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-      - aws ecr get-login-password --region "$AWS_REGION" | notation login --username AWS --password-stdin "$ECR_REGISTRY"
+      - docker-credential-ecr-login version || true
+      - cat "$HOME/.docker/config.json"
   build:
     commands:
       - set -euo pipefail
