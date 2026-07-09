@@ -28,7 +28,7 @@ phases:
     commands:
       - cd environment
 
-      - echo "Source commit: ${CODEBUILD_RESOLVED_SOURCE_VERSION:-unknown}"
+      - 'echo "Source commit: ${CODEBUILD_RESOLVED_SOURCE_VERSION:-unknown}"'
       - git rev-parse --short HEAD 2>/dev/null || true
       - echo "Checking for stale Terraform resources before plan."
       - |
@@ -39,7 +39,7 @@ phases:
       - terraform fmt -check -recursive
       - terraform init
       - terraform validate
-      - echo "Running Checkov scan in soft-fail mode because this environment intentionally contains documented insecure variances."
+      - 'echo "Running Checkov scan in soft-fail mode because this environment intentionally contains documented insecure variances."'
       - checkov -d . --quiet --soft-fail
   build:
     commands:
