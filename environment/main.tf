@@ -21,6 +21,7 @@ module "network" {
   vpc_cidr                    = var.vpc_cidr
   secondary_vpc_cidr          = var.secondary_vpc_cidr
   public_subnet_cidr          = var.public_subnet_cidr
+  public_subnet_az2_cidr      = var.public_subnet_az2_cidr
   private_subnet_cidr         = var.private_subnet_cidr
   private_subnet_az2_cidr     = var.private_subnet_az2_cidr
   availability_zone           = local.az_a
