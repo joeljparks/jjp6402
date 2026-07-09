@@ -6,7 +6,7 @@ COPY . .
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/tasky ./main.go
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM debian:bookworm-slim
 WORKDIR /
 COPY --from=builder /out/tasky /tasky
 COPY wizexercise.txt /wizexercise.txt
