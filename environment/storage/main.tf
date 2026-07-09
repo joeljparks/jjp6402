@@ -1,6 +1,9 @@
-variable "name_prefix" { type = string }
+variable "name_prefix" {
+  type = string
+}
 
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 resource "aws_s3_bucket" "mongo_backup" {
   bucket        = "${var.name_prefix}-mongo5-backup"
@@ -17,6 +20,7 @@ resource "aws_s3_bucket_public_access_block" "mongo_backup" {
 
 resource "aws_s3_bucket_ownership_controls" "mongo_backup" {
   bucket = aws_s3_bucket.mongo_backup.id
+
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
@@ -33,10 +37,12 @@ data "aws_iam_policy_document" "mongo_backup_public" {
     sid     = "PublicList"
     effect  = "Allow"
     actions = ["s3:ListBucket"]
+
     principals {
       type        = "*"
       identifiers = ["*"]
     }
+
     resources = [aws_s3_bucket.mongo_backup.arn]
   }
 
@@ -44,10 +50,12 @@ data "aws_iam_policy_document" "mongo_backup_public" {
     sid     = "PublicRead"
     effect  = "Allow"
     actions = ["s3:GetObject"]
+
     principals {
       type        = "*"
       identifiers = ["*"]
     }
+
     resources = ["${aws_s3_bucket.mongo_backup.arn}/*"]
   }
 }
@@ -72,25 +80,46 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
 
 data "aws_iam_policy_document" "cloudtrail" {
   statement {
-    actions   = ["s3:GetBucketAcl"]
-    resources = [aws_s3_bucket.cloudtrail.arn]
+    sid     = "AWSCloudTrailAclCheck"
+    effect  = "Allow"
+    actions = ["s3:GetBucketAcl"]
+
     principals {
       type        = "Service"
       identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    resources = [aws_s3_bucket.cloudtrail.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/${var.name_prefix}-cloudtrail"]
     }
   }
 
   statement {
-    actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.cloudtrail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"]
+    sid     = "AWSCloudTrailWrite"
+    effect  = "Allow"
+    actions = ["s3:PutObject"]
+
     principals {
       type        = "Service"
       identifiers = ["cloudtrail.amazonaws.com"]
     }
+
+    resources = ["${aws_s3_bucket.cloudtrail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"]
+
     condition {
       test     = "StringEquals"
       variable = "s3:x-amz-acl"
       values   = ["bucket-owner-full-control"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/${var.name_prefix}-cloudtrail"]
     }
   }
 }
@@ -108,6 +137,66 @@ resource "aws_s3_bucket_public_access_block" "config" {
   restrict_public_buckets = true
 }
 
-output "mongo_backup_bucket_name" { value = aws_s3_bucket.mongo_backup.bucket }
-output "cloudtrail_bucket_name" { value = aws_s3_bucket.cloudtrail.bucket }
-output "config_bucket_name" { value = aws_s3_bucket.config.bucket }
+resource "aws_s3_bucket_policy" "config" {
+  bucket = aws_s3_bucket.config.id
+  policy = data.aws_iam_policy_document.config.json
+}
+
+data "aws_iam_policy_document" "config" {
+  statement {
+    sid     = "AWSConfigBucketPermissionsCheck"
+    effect  = "Allow"
+    actions = ["s3:GetBucketAcl"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["config.amazonaws.com"]
+    }
+
+    resources = [aws_s3_bucket.config.arn]
+  }
+
+  statement {
+    sid     = "AWSConfigBucketExistenceCheck"
+    effect  = "Allow"
+    actions = ["s3:ListBucket"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["config.amazonaws.com"]
+    }
+
+    resources = [aws_s3_bucket.config.arn]
+  }
+
+  statement {
+    sid     = "AWSConfigBucketDelivery"
+    effect  = "Allow"
+    actions = ["s3:PutObject"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["config.amazonaws.com"]
+    }
+
+    resources = ["${aws_s3_bucket.config.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/Config/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+}
+
+output "mongo_backup_bucket_name" {
+  value = aws_s3_bucket.mongo_backup.bucket
+}
+
+output "cloudtrail_bucket_name" {
+  value = aws_s3_bucket.cloudtrail.bucket
+}
+
+output "config_bucket_name" {
+  value = aws_s3_bucket.config.bucket
+}

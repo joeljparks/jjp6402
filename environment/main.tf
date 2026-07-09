@@ -74,6 +74,8 @@ module "security" {
   cloudtrail_bucket_name = module.storage.cloudtrail_bucket_name
   config_bucket_name     = module.storage.config_bucket_name
   config_role_arn        = module.iam.config_role_arn
+
+  depends_on = [module.storage, module.iam]
 }
 
 module "codeartifact" {

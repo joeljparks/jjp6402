@@ -64,7 +64,7 @@ locals {
     app_password    = var.app_password
     app_database    = var.app_database
     backup_bucket   = var.backup_bucket_name
-    aws_region      = data.aws_region.current.name
+    aws_region      = data.aws_region.current.region
   })
 }
 
