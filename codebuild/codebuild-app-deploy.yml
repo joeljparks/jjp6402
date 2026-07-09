@@ -31,7 +31,30 @@ phases:
     commands:
       - set -euo pipefail
       - pwd
-      - source image.env
+      - |
+        IMAGE_ENV_PATH=""
+        for candidate in \
+          "${CODEBUILD_SRC_DIR_build_output:-}/image.env" \
+          "${CODEBUILD_SRC_DIR:-}/image.env" \
+          "./image.env"; do
+          if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+            IMAGE_ENV_PATH="$candidate"
+            break
+          fi
+        done
+        if [ -z "$IMAGE_ENV_PATH" ]; then
+          echo "image.env not found in primary source or build_output artifact."
+          env | sort | grep '^CODEBUILD_SRC_DIR' || true
+          find /codebuild/output -maxdepth 6 -name image.env -print || true
+          exit 1
+        fi
+        echo "Using image metadata from ${IMAGE_ENV_PATH}."
+        source "$IMAGE_ENV_PATH"
+        if [ "${BUILD_STATUS:-}" != "SUCCEEDED" ]; then
+          echo "Build artifact reports BUILD_STATUS=${BUILD_STATUS:-unset}; refusing to deploy."
+          exit 1
+        fi
+        test -n "${IMAGE_REF:-}"
       - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
       - docker-credential-ecr-login version || true
       - cat "$HOME/.docker/config.json"
