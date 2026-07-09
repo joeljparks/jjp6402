@@ -54,8 +54,13 @@ phases:
       - notation verify "$IMAGE_REF"
   post_build:
     commands:
-      - printf 'IMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=%s\nIMAGE_REF=%s\n' "$IMAGE_TAG" "$IMAGE_URI" "$IMAGE_DIGEST" "$IMAGE_REF" > image.env
-      - cat image.env
+      - |
+        if [ -n "${IMAGE_DIGEST:-}" ] && [ -n "${IMAGE_REF:-}" ]; then
+          printf 'IMAGE_TAG=%s\nIMAGE_URI=%s\nIMAGE_DIGEST=%s\nIMAGE_REF=%s\n' "$IMAGE_TAG" "$IMAGE_URI" "$IMAGE_DIGEST" "$IMAGE_REF" > image.env
+          cat image.env
+        else
+          echo "Image build or push did not complete; skipping image.env generation."
+        fi
 
 artifacts:
   files:
