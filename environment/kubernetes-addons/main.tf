@@ -13,11 +13,16 @@ resource "kubernetes_namespace_v1" "gatekeeper_system" {
 }
 
 resource "helm_release" "gatekeeper" {
-  name       = "gatekeeper"
-  repository = "https://open-policy-agent.github.io/gatekeeper/charts"
-  chart      = "gatekeeper"
-  version    = "3.22.2"
-  namespace  = kubernetes_namespace_v1.gatekeeper_system.metadata[0].name
+  name             = "gatekeeper"
+  repository       = "https://open-policy-agent.github.io/gatekeeper/charts"
+  chart            = "gatekeeper"
+  version          = "3.22.2"
+  namespace        = kubernetes_namespace_v1.gatekeeper_system.metadata[0].name
+  create_namespace = false
+  cleanup_on_fail  = true
+  replace          = true
+  wait             = true
+  timeout          = 600
 }
 
 data "aws_iam_policy_document" "lbc_assume" {
@@ -62,6 +67,8 @@ resource "kubernetes_service_account_v1" "lbc" {
       "eks.amazonaws.com/role-arn" = aws_iam_role.lbc.arn
     }
   }
+
+  depends_on = [aws_iam_role_policy_attachment.lbc]
 }
 
 resource "helm_release" "aws_load_balancer_controller" {
@@ -71,11 +78,21 @@ resource "helm_release" "aws_load_balancer_controller" {
   version    = "1.14.0"
   namespace  = "kube-system"
 
+  cleanup_on_fail = true
+  replace         = true
+  wait            = true
+  timeout         = 600
+
   set = [
     { name = "clusterName", value = var.eks_cluster_name },
     { name = "region", value = var.aws_region },
     { name = "vpcId", value = var.vpc_id },
     { name = "serviceAccount.create", value = "false" },
     { name = "serviceAccount.name", value = kubernetes_service_account_v1.lbc.metadata[0].name }
+  ]
+
+  depends_on = [
+    helm_release.gatekeeper,
+    kubernetes_service_account_v1.lbc
   ]
 }

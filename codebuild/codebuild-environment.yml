@@ -38,6 +38,7 @@ phases:
         fi
       - terraform fmt -check -recursive
       - terraform init
+      - bash ./../codebuild/scripts/recover-environment-state.sh
       - terraform validate
       - 'echo "Running Checkov scan in soft-fail mode because this environment intentionally contains documented insecure variances."'
       - checkov -d . --quiet --soft-fail
