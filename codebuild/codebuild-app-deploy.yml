@@ -124,7 +124,21 @@ phases:
       - kubectl get ingress tasky -n tasky -o jsonpath='{.metadata.annotations.alb\.ingress\.kubernetes\.io/subnets}{"\n"}'
       - sed "s|__IMAGE__|${IMAGE_REF}|g" deployment.yaml | kubectl apply -f -
       - kubectl annotate deployment tasky -n tasky jjp6402.io/image-signature-verified=true --overwrite
-      - kubectl rollout status deployment/tasky -n tasky --timeout=300s
+      - |
+        if ! kubectl rollout status deployment/tasky -n tasky --timeout=300s; then
+          echo "Tasky rollout failed. Dumping Kubernetes diagnostics."
+          kubectl get deployment tasky -n tasky -o wide || true
+          kubectl describe deployment tasky -n tasky || true
+          kubectl get pods -n tasky -o wide || true
+          kubectl describe pods -n tasky -l app=tasky || true
+          kubectl logs -n tasky -l app=tasky --all-containers --tail=200 || true
+          for pod in $(kubectl get pods -n tasky -l app=tasky -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+            echo "===== previous logs for ${pod} ====="
+            kubectl logs -n tasky "${pod}" --all-containers --previous --tail=200 || true
+          done
+          kubectl get events -n tasky --sort-by=.lastTimestamp | tail -50 || true
+          exit 1
+        fi
 
 artifacts:
   files:
