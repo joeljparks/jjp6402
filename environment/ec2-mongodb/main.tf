@@ -1,112 +1,90 @@
-resource "random_password" "mongodb_admin" {
-  length           = 24
-  special          = true
-  override_special = "!#%&*-_=+[]{}<>:?"
+variable "name_prefix" { type = string }
+variable "subnet_id" { type = string }
+variable "vpc_id" { type = string }
+variable "allowed_ssh_cidr" { type = string }
+variable "eks_security_group_id" { type = string }
+variable "instance_profile_name" { type = string }
+variable "backup_bucket_name" { type = string }
+variable "mongodb_version" { type = string }
+variable "admin_user" { type = string }
+variable "admin_password" {
+  type      = string
+  sensitive = true
+}
+variable "app_user" { type = string }
+variable "app_password" {
+  type      = string
+  sensitive = true
+}
+variable "app_database" { type = string }
+
+data "aws_ssm_parameter" "ubuntu_1804_ami" {
+  name = "/aws/service/canonical/ubuntu/server/18.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 }
 
-resource "random_password" "mongodb_app" {
-  length           = 24
-  special          = true
-  override_special = "!#%&*-_=+[]{}<>:?"
+resource "aws_security_group" "mongodb" {
+  name        = "${var.name_prefix}-mongodb-sg"
+  description = "MongoDB VM security group."
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "public ssh"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
+  }
+
+  ingress {
+    description     = "mongodb from eks"
+    from_port       = 27017
+    to_port         = 27017
+    protocol        = "tcp"
+    security_groups = [var.eks_security_group_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.name_prefix}-mongodb-sg" }
 }
 
-resource "random_password" "jwt_secret" {
-  length  = 48
-  special = false
+data "aws_region" "current" {}
+
+locals {
+  user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
+    mongodb_version = var.mongodb_version
+    admin_user      = var.admin_user
+    admin_password  = var.admin_password
+    app_user        = var.app_user
+    app_password    = var.app_password
+    app_database    = var.app_database
+    backup_bucket   = var.backup_bucket_name
+    aws_region      = data.aws_region.current.region
+  })
 }
 
-module "network" {
-  source                      = "./networking"
-  name_prefix                 = var.name_prefix
-  vpc_cidr                    = var.vpc_cidr
-  secondary_vpc_cidr          = var.secondary_vpc_cidr
-  public_subnet_cidr          = var.public_subnet_cidr
-  public_subnet_az2_cidr      = var.public_subnet_az2_cidr
-  private_subnet_cidr         = var.private_subnet_cidr
-  private_subnet_az2_cidr     = var.private_subnet_az2_cidr
-  availability_zone           = local.az_a
-  secondary_availability_zone = local.az_b
+resource "aws_instance" "mongodb" {
+  ami                         = data.aws_ssm_parameter.ubuntu_1804_ami.value
+  instance_type               = "t3.micro"
+  subnet_id                   = var.subnet_id
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.mongodb.id]
+  iam_instance_profile        = var.instance_profile_name
+  user_data                   = local.user_data
+
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
+  tags = { Name = "${var.name_prefix}-mongodb-vm" }
 }
 
-module "iam" {
-  source      = "./iam"
-  name_prefix = var.name_prefix
-}
-
-module "storage" {
-  source      = "./storage"
-  name_prefix = var.name_prefix
-}
-
-module "ecr" {
-  source      = "./ecr"
-  name_prefix = var.name_prefix
-}
-
-module "eks" {
-  source                   = "./eks"
-  name_prefix              = var.name_prefix
-  eks_version              = var.eks_version
-  private_subnet_ids       = module.network.private_subnet_ids
-  cluster_role_arn         = module.iam.eks_cluster_role_arn
-  node_role_arn            = module.iam.eks_node_role_arn
-  vpc_cni_addon_version    = "v1.22.2-eksbuild.1"
-  kube_proxy_addon_version = "v1.36.0-eksbuild.9"
-  coredns_addon_version    = "v1.14.3-eksbuild.3"
-}
-
-module "mongodb" {
-  source                = "./ec2-mongodb"
-  name_prefix           = var.name_prefix
-  subnet_id             = module.network.public_subnet_id
-  vpc_id                = module.network.vpc_id
-  allowed_ssh_cidr      = var.allowed_ssh_cidr
-  eks_security_group_id = module.eks.cluster_security_group_id
-  instance_profile_name = module.iam.mongodb_instance_profile_name
-  backup_bucket_name    = module.storage.mongo_backup_bucket_name
-  mongodb_version       = var.mongodb_version
-  admin_user            = var.mongodb_admin_user
-  admin_password        = random_password.mongodb_admin.result
-  app_user              = var.mongodb_app_user
-  app_password          = random_password.mongodb_app.result
-  app_database          = var.mongodb_app_database
-}
-
-module "security" {
-  source                 = "./security-controls"
-  name_prefix            = var.name_prefix
-  cloudtrail_bucket_name = module.storage.cloudtrail_bucket_name
-  config_bucket_name     = module.storage.config_bucket_name
-  config_role_arn        = module.iam.config_role_arn
-
-  depends_on = [module.storage, module.iam]
-}
-
-module "codeartifact" {
-  source      = "./codeartifact"
-  name_prefix = var.name_prefix
-}
-
-module "codedeploy" {
-  source           = "./codedeploy"
-  name_prefix      = var.name_prefix
-  service_role_arn = module.iam.codedeploy_role_arn
-}
-
-module "signing" {
-  source      = "./signing"
-  name_prefix = var.name_prefix
-}
-
-module "kubernetes_addons" {
-  source                       = "./kubernetes-addons"
-  name_prefix                  = var.name_prefix
-  aws_region                   = var.aws_region
-  vpc_id                       = module.network.vpc_id
-  eks_cluster_name             = module.eks.cluster_name
-  eks_oidc_provider_arn        = module.eks.oidc_provider_arn
-  eks_oidc_provider_url        = module.eks.oidc_provider_url
-  aws_load_balancer_policy_arn = module.iam.aws_load_balancer_controller_policy_arn
-
-  depends_on = [module.eks]
-}
+output "private_ip" { value = aws_instance.mongodb.private_ip }
+output "public_ip" { value = aws_instance.mongodb.public_ip }
+output "security_group_id" { value = aws_security_group.mongodb.id }
