@@ -9,6 +9,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o
 FROM debian:bookworm-slim
 WORKDIR /
 COPY --from=builder /out/tasky /tasky
+COPY --from=builder /src/assets ./assets
 COPY wizexercise.txt /wizexercise.txt
 USER 65532:65532
 EXPOSE 8080

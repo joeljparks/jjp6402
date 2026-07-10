@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasky Todo</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="card todo-card">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">jjp6402</p>
+          <h1>Todo List</h1>
+        </div>
+        <button id="logoutBtn" type="button" class="secondary small">Log out</button>
+      </div>
+
+      <div id="message" class="message" role="status"></div>
+
+      <form id="todoForm" class="todo-form">
+        <input id="todoTitle" type="text" placeholder="Add a todo" autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+
+      <ul id="todoList" class="todo-list"></ul>
+    </section>
+  </main>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

@@ -60,6 +60,10 @@ func main() {
 	s := &server{db: client.Database("go-mongodb"), jwtSecret: []byte(secret)}
 
 	r := gin.Default()
+	r.LoadHTMLGlob("assets/*.html")
+	r.Static("/assets", "./assets")
+	r.GET("/", s.index)
+	r.GET("/todo", s.todoPage)
 	r.GET("/healthz", s.health)
 	r.POST("/signup", s.signup)
 	r.POST("/login", s.login)
@@ -74,6 +78,15 @@ func main() {
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
+}
+
+
+func (s *server) index(c *gin.Context) {
+	c.HTML(http.StatusOK, "login.html", gin.H{"title": "Tasky Login"})
+}
+
+func (s *server) todoPage(c *gin.Context) {
+	c.HTML(http.StatusOK, "todo.html", gin.H{"title": "Tasky Todo"})
 }
 
 func (s *server) health(c *gin.Context) {
