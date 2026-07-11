@@ -59,6 +59,10 @@ phases:
           kubectl get nodes
           kubectl get ns
           helm list -A
+          kubectl get constrainttemplates
+          kubectl get constraints
+          aws eks describe-cluster --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION" --query 'cluster.logging.clusterLogging' --output json
+          aws configservice describe-config-rules --region "$AWS_REGION" --query 'ConfigRules[?starts_with(ConfigRuleName, `jjp6402-`)].{Name:ConfigRuleName,State:ConfigRuleState}' --output table
         else
           echo "Skipping EKS validation because terraform apply did not complete."
         fi

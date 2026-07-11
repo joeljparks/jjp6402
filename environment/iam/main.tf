@@ -59,6 +59,12 @@ resource "aws_iam_role" "mongodb" {
   assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
 }
 
+
+resource "aws_iam_role_policy_attachment" "mongodb_ssm" {
+  role       = aws_iam_role.mongodb.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "mongodb" {
   name = "${var.name_prefix}-mongodb-profile"
   role = aws_iam_role.mongodb.name

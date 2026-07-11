@@ -26,6 +26,8 @@ phases:
       - kubectl get svc -n tasky -o wide
       - kubectl get ingress -n tasky -o wide
       - kubectl rollout status deployment/tasky -n tasky --timeout=300s
+      - kubectl get constrainttemplates
+      - kubectl get constraints
       - kubectl exec -n tasky deploy/tasky -- cat /wizexercise.txt
       - |
         ALB_HOST=""

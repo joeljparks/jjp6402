@@ -3,6 +3,7 @@ kind: K8sRequireSignatureAnnotation
 metadata:
   name: require-image-signature-verification-annotation
 spec:
+  enforcementAction: deny
   match:
     namespaces:
       - tasky

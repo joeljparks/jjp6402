@@ -50,8 +50,9 @@ phases:
       - set -euo pipefail
       - docker build -t "$IMAGE_URI" .
       - trivy image --severity UNKNOWN,LOW,MEDIUM --format table --output trivy-low-medium.txt "$IMAGE_URI" || true
-      - trivy image --severity HIGH,CRITICAL --format table --output trivy-high-critical.txt "$IMAGE_URI" || true
-      - cat trivy-high-critical.txt || true
+      - trivy image --severity HIGH,CRITICAL --format table --output trivy-high-critical.txt "$IMAGE_URI"
+      - cat trivy-high-critical.txt
+      - trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed "$IMAGE_URI"
       - docker push "$IMAGE_URI"
       - export IMAGE_DIGEST=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$IMAGE_TAG" --query 'imageDetails[0].imageDigest' --output text)
       - export IMAGE_REF="${IMAGE_REPO}@${IMAGE_DIGEST}"

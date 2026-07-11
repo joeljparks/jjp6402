@@ -3,7 +3,10 @@ kind: K8sRequireNonRoot
 metadata:
   name: require-non-root
 spec:
+  enforcementAction: deny
   match:
+    namespaces:
+      - tasky
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]

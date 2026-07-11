@@ -3,7 +3,11 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y gnupg curl ca-certificates awscli cron
+apt-get install -y gnupg curl ca-certificates awscli cron snapd
+
+snap install amazon-ssm-agent --classic
+systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service
+
 curl -fsSL https://pgp.mongodb.com/server-5.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-5.0.gpg
 echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-5.0.list
 apt-get update -y
@@ -57,5 +61,7 @@ chmod 700 /usr/local/bin/mongodb-backup.sh
 cat >/etc/cron.d/mongodb-backup <<EOF
 0 2 * * * root /usr/local/bin/mongodb-backup.sh
 EOF
+chmod 644 /etc/cron.d/mongodb-backup
+systemctl enable --now cron
 
 /usr/local/bin/mongodb-backup.sh || true

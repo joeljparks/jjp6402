@@ -22,6 +22,21 @@ helm upgrade --install gatekeeper gatekeeper/gatekeeper \
   --wait \
   --timeout 10m
 
+GATEKEEPER_MANIFEST_DIR="${CODEBUILD_SRC_DIR:-$(pwd)}/app/tasky/k8s/gatekeeper"
+
+kubectl apply -f "${GATEKEEPER_MANIFEST_DIR}/require-non-root-template.yaml"
+kubectl apply -f "${GATEKEEPER_MANIFEST_DIR}/require-signature-annotation-template.yaml"
+
+kubectl wait --for=condition=Established \
+  crd/k8srequirenonroots.constraints.gatekeeper.sh \
+  --timeout=120s
+kubectl wait --for=condition=Established \
+  crd/k8srequiresignatureannotations.constraints.gatekeeper.sh \
+  --timeout=120s
+
+kubectl apply -f "${GATEKEEPER_MANIFEST_DIR}/require-non-root-constraint.yaml"
+kubectl apply -f "${GATEKEEPER_MANIFEST_DIR}/require-signature-annotation-constraint.yaml"
+
 LBC_ROLE_ARN=$(terraform output -raw aws_load_balancer_controller_role_arn)
 VPC_ID=$(terraform output -raw vpc_id)
 
@@ -61,4 +76,6 @@ kubectl create secret generic "$MONGODB_APP_SECRET_NAME" \
 kubectl get namespace gatekeeper-system "$MONGODB_APP_NAMESPACE"
 kubectl get serviceaccount aws-load-balancer-controller -n kube-system -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}{"\n"}'
 helm list -n gatekeeper-system
+kubectl get constrainttemplates
+kubectl get constraints
 helm list -n kube-system | grep aws-load-balancer-controller

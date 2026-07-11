@@ -9,6 +9,7 @@ resource "aws_cloudtrail" "this" {
   include_global_service_events = true
   is_multi_region_trail         = true
   enable_logging                = true
+  enable_log_file_validation    = true
 }
 
 resource "aws_config_configuration_recorder" "this" {
@@ -36,4 +37,26 @@ resource "aws_config_configuration_recorder_status" "this" {
 resource "aws_accessanalyzer_analyzer" "this" {
   analyzer_name = "${var.name_prefix}-access-analyzer"
   type          = "ACCOUNT"
+}
+
+resource "aws_config_config_rule" "public_s3_read_prohibited" {
+  name = "${var.name_prefix}-s3-public-read-prohibited"
+
+  source {
+    owner             = "AWS"
+    source_identifier = "S3_BUCKET_PUBLIC_READ_PROHIBITED"
+  }
+
+  depends_on = [aws_config_configuration_recorder_status.this]
+}
+
+resource "aws_config_config_rule" "restricted_ssh" {
+  name = "${var.name_prefix}-restricted-ssh"
+
+  source {
+    owner             = "AWS"
+    source_identifier = "INCOMING_SSH_DISABLED"
+  }
+
+  depends_on = [aws_config_configuration_recorder_status.this]
 }
