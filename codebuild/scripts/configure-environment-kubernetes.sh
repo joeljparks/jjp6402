@@ -86,11 +86,11 @@ wait_for_constraint_template() {
 
 wait_for_constraint_template \
   "k8srequirenonroot" \
-  "k8srequirenonroots.constraints.gatekeeper.sh"
+  "k8srequirenonroot.constraints.gatekeeper.sh"
 
 wait_for_constraint_template \
   "k8srequiresignatureannotation" \
-  "k8srequiresignatureannotations.constraints.gatekeeper.sh"
+  "k8srequiresignatureannotation.constraints.gatekeeper.sh"
 
 kubectl apply \
   -f "${GATEKEEPER_MANIFEST_DIR}/require-non-root-constraint.yaml"
